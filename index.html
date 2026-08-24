@@ -755,6 +755,90 @@
             background: linear-gradient(135deg, #e4e4e7 0%, #f4f4f5 100%);
         }
 
+        .modal-image.zoomable { cursor: zoom-in; }
+
+        .modal-image .zoom-hint {
+            position: absolute;
+            bottom: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .modal-image .zoom-hint svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--color-primary-dark);
+            fill: none;
+            stroke-width: 2;
+        }
+
+        /* Lightbox: vista ampliada a pantalla completa de la foto del producto */
+        .lightbox-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.92);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 500;
+            padding: 30px;
+            padding-top: max(30px, env(safe-area-inset-top));
+            padding-bottom: max(30px, env(safe-area-inset-bottom));
+            cursor: zoom-out;
+            opacity: 0;
+            transition: opacity 0.25s ease;
+        }
+
+        .lightbox-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .lightbox-overlay img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            border-radius: 6px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+            -webkit-user-drag: none;
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: max(20px, env(safe-area-inset-top));
+            right: max(20px, env(safe-area-inset-right));
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 2;
+            transition: var(--transition);
+        }
+
+        .lightbox-close:hover { background: #fff; transform: scale(1.05); }
+
+        .lightbox-close svg {
+            width: 20px;
+            height: 20px;
+            stroke: #202124;
+            fill: none;
+            stroke-width: 2.4;
+        }
+
         .modal-image img, .modal-image .placeholder {
             position: absolute;
             top: 0; left: 0;
@@ -1402,6 +1486,14 @@
             </div>
         </div>
     </div>
+
+    <!-- Lightbox: vista ampliada de la foto del producto -->
+    <div class="lightbox-overlay" id="imageLightbox" onclick="closeLightbox()">
+        <button class="lightbox-close" onclick="closeLightbox()" aria-label="Cerrar vista ampliada">
+            <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+        <img id="lightboxImg" src="" alt="">
+    </div>
     </div>
     <!-- /appContent -->
 
@@ -2000,7 +2092,14 @@
             const codigo = imgEl.dataset.codigo || '';
             const wrapper = document.createElement('div');
             wrapper.innerHTML = placeholderHTML(codigo);
+            const modalContainer = imgEl.closest('#modalImage');
             imgEl.replaceWith(wrapper.firstElementChild);
+            if (modalContainer) {
+                modalContainer.classList.remove('zoomable');
+                modalContainer.onclick = null;
+                const hint = modalContainer.querySelector('.zoom-hint');
+                if (hint) hint.remove();
+            }
         }
 
         function renderProductCard(prod, index) {
@@ -2075,10 +2174,16 @@
                 ? `<img src="${modalImgSrc}" alt="${product.nombre}" data-codigo="${product.codigo}" onerror="handleImgError(this)">`
                 : placeholderHTML(product.codigo);
 
-            document.getElementById('modalImage').innerHTML = `
+            const modalImageEl = document.getElementById('modalImage');
+            modalImageEl.innerHTML = `
                 ${modalImageContent}
                 <span class="product-badge ${isBio ? 'gold' : ''}" style="position:absolute; top:20px; left:20px; padding:8px 16px; font-size:0.85rem; z-index:2;">${isBio ? 'Bio-Cuero' : '100% Cuero Vacuno'}</span>
+                ${modalImgSrc ? `<span class="zoom-hint" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg></span>` : ''}
             `;
+
+            // Solo se puede ampliar si hay una foto real cargada (no aplica al placeholder)
+            modalImageEl.classList.toggle('zoomable', Boolean(modalImgSrc));
+            modalImageEl.onclick = modalImgSrc ? () => openLightbox(modalImgSrc, product.nombre) : null;
 
             document.getElementById('productModal').classList.add('active');
             document.body.style.overflow = 'hidden';
@@ -2089,6 +2194,27 @@
             document.body.style.overflow = '';
             currentProduct = null;
         }
+
+        function openLightbox(src, alt) {
+            const overlay = document.getElementById('imageLightbox');
+            const img = document.getElementById('lightboxImg');
+            if (!overlay || !img) return;
+            img.src = src;
+            img.alt = alt || '';
+            overlay.classList.add('active');
+        }
+
+        function closeLightbox() {
+            const overlay = document.getElementById('imageLightbox');
+            const img = document.getElementById('lightboxImg');
+            if (!overlay) return;
+            overlay.classList.remove('active');
+            if (img) img.src = '';
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeLightbox();
+        });
 
         function contactWhatsApp() {
             if (!currentProduct) return;

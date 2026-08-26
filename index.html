@@ -1570,7 +1570,7 @@
                     </label>
                     <input type="file" id="jsonFileInput" accept="application/json,.json" hidden="" onchange="onJsonFileSelected(event)">
 
-                    <div class="landing-error" id="jsonError" style=""></div>
+                    <div class="landing-error" id="jsonError"></div>
 
                     <button class="btn btn-primary landing-btn" id="generateBtn" onclick="handleGenerateFromJson()" disabled="">Generando documento...</button>
                 </div>
@@ -1923,16 +1923,15 @@
 
             const searchInputEl = document.getElementById('searchInput');
             if (searchInputEl) searchInputEl.value = '';
-            document.querySelectorAll('#materialFilters .sub-filter').forEach(btn => {
-                btn.classList.toggle('active', btn.dataset.material === 'all');
-            });
             toggleFiltersPanel(false);
 
             document.getElementById('landingScreen')?.style && (document.getElementById('landingScreen').style.display = 'none');
             document.getElementById('appContent').style.display = 'block';
             window.scrollTo(0, 0);
 
-            renderCategoryFilters();
+            // Si la URL trae ?categoria= y/o ?material=, el catálogo abre directamente
+            // con ese filtro aplicado (útil para links enviados a un cliente puntual).
+            applyURLParams();
             renderProducts();
 
             if (!appInitialized) {
@@ -1959,19 +1958,40 @@
             });
         }
 
+        // Cuenta cuántos productos de una categoría cumplen el material actualmente activo
+        // ('all' = todos los materiales cuentan).
+        function countForMaterial(cat) {
+            return activeMaterial === 'all'
+                ? cat.productos.length
+                : cat.productos.filter(p => p.material === activeMaterial).length;
+        }
+
+        // Construye el desplegable de categorías. Si hay un material activo (Cuero Vacuno /
+        // Bio-Cuero), solo se listan las categorías que tienen al menos un producto de ese
+        // material, y el contador de cada una refleja solo esos productos.
         function renderCategoryFilters() {
             const container = document.getElementById('categoryFilters');
-            const totalProducts = catalogo.categorias.reduce((sum, cat) => sum + cat.productos.length, 0);
 
-            let html = `<button class="filter-btn active" data-category="all" onclick="setCategory('all')">
+            const catsToShow = catalogo.categorias
+                .map(cat => ({ cat, count: countForMaterial(cat) }))
+                .filter(({ count }) => count > 0);
+
+            // Si la categoría activa ya no tiene productos con el material elegido, volvemos a "Todo"
+            if (activeCategory !== 'all' && !catsToShow.some(({ cat }) => cat.id === activeCategory)) {
+                activeCategory = 'all';
+            }
+
+            const totalProducts = catsToShow.reduce((sum, { count }) => sum + count, 0);
+
+            let html = `<button class="filter-btn ${activeCategory === 'all' ? 'active' : ''}" data-category="all" onclick="setCategory('all')">
                 <span>Todo</span>
                 <span class="count">${totalProducts}</span>
             </button>`;
 
-            catalogo.categorias.forEach(cat => {
-                html += `<button class="filter-btn" data-category="${cat.id}" onclick="setCategory('${cat.id}')">
+            catsToShow.forEach(({ cat, count }) => {
+                html += `<button class="filter-btn ${activeCategory === cat.id ? 'active' : ''}" data-category="${cat.id}" onclick="setCategory('${cat.id}')">
                     <span>${cat.nombre}</span>
-                    <span class="count">${cat.productos.length}</span>
+                    <span class="count">${count}</span>
                 </button>`;
             });
 
@@ -1986,13 +2006,13 @@
             if (!labelEl || !countEl || !catalogo) return;
 
             if (activeCategory === 'all') {
-                const total = catalogo.categorias.reduce((sum, cat) => sum + cat.productos.length, 0);
+                const total = catalogo.categorias.reduce((sum, cat) => sum + countForMaterial(cat), 0);
                 labelEl.textContent = 'Todo';
                 countEl.textContent = total;
             } else {
                 const cat = catalogo.categorias.find(c => c.id === activeCategory);
                 labelEl.textContent = cat ? cat.nombre : 'Categoría';
-                countEl.textContent = cat ? cat.productos.length : '0';
+                countEl.textContent = cat ? countForMaterial(cat) : '0';
             }
         }
 
@@ -2017,6 +2037,7 @@
             toggleFiltersPanel(false);
             renderProducts();
             scrollToResultsTop();
+            updateURLParams();
         }
 
         function setMaterial(material) {
@@ -2025,18 +2046,84 @@
                 btn.classList.toggle('active', btn.dataset.material === material);
             });
 
-            // "Todos" quita cualquier filtro de categoría previo y muestra el catálogo completo
-            if (material === 'all') {
-                activeCategory = 'all';
-                document.querySelectorAll('#categoryFilters .filter-btn').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.category === 'all');
-                });
-                updateFiltersToggleSummary();
-            }
+            // Cambiar de material cambia qué categorías tienen productos disponibles,
+            // así que el desplegable de categorías se reconstruye (y vuelve a "Todo"
+            // si la categoría que estaba activa ya no aplica a este material).
+            activeCategory = 'all';
+            renderCategoryFilters();
 
             toggleFiltersPanel(false);
             renderProducts();
             scrollToResultsTop();
+            updateURLParams();
+        }
+
+        // ============ Sincronización con la URL (para compartir un link con filtro) ============
+        // Mapea el valor interno de "material" a algo corto y legible en la URL.
+        const MATERIAL_URL_MAP = { '100% Cuero Vacuno': 'vacuno', 'Bio-Cuero': 'bio' };
+        const MATERIAL_URL_MAP_REVERSE = { vacuno: '100% Cuero Vacuno', bio: 'Bio-Cuero' };
+
+        // Refleja el filtro de categoría/material activo en la barra de direcciones
+        // (?categoria=...&material=...), sin recargar la página ni ensuciar el
+        // historial de navegación. Así se puede copiar la URL y enviarla a un
+        // cliente específico ya con el filtro que le interesa.
+        function updateURLParams() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+
+                if (activeCategory && activeCategory !== 'all') {
+                    params.set('categoria', activeCategory);
+                } else {
+                    params.delete('categoria');
+                }
+
+                if (activeMaterial && activeMaterial !== 'all') {
+                    params.set('material', MATERIAL_URL_MAP[activeMaterial] || activeMaterial);
+                } else {
+                    params.delete('material');
+                }
+
+                const query = params.toString();
+                const newUrl = window.location.pathname + (query ? `?${query}` : '') + window.location.hash;
+                window.history.replaceState(null, '', newUrl);
+            } catch (e) {
+                // Si el navegador no permite tocar la URL (ej. algunos visores de archivo
+                // local), el filtro sigue funcionando igual, solo no queda en el link.
+            }
+        }
+
+        // Lee ?categoria= y ?material= al cargar el catálogo y aplica ese filtro de
+        // entrada. Se usa tanto en el catálogo exportado (link para un cliente) como
+        // en la vista previa dentro de esta misma herramienta.
+        function applyURLParams() {
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const materialParam = (params.get('material') || '').toLowerCase();
+                const categoriaParam = params.get('categoria');
+
+                if (materialParam) {
+                    const porAtajo = MATERIAL_URL_MAP_REVERSE[materialParam];
+                    const porValorExacto = ['100% Cuero Vacuno', 'Bio-Cuero']
+                        .find(m => m.toLowerCase() === materialParam);
+                    const match = porAtajo || porValorExacto;
+                    if (match) activeMaterial = match;
+                }
+
+                document.querySelectorAll('#materialFilters .sub-filter').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.material === activeMaterial);
+                });
+
+                if (categoriaParam) {
+                    const cat = catalogo.categorias.find(c => c.id === categoriaParam);
+                    const tieneProductos = cat && countForMaterial(cat) > 0;
+                    if (tieneProductos) activeCategory = categoriaParam;
+                }
+
+                renderCategoryFilters();
+            } catch (e) {
+                // Si algo falla leyendo la URL, el catálogo simplemente abre sin filtros.
+                renderCategoryFilters();
+            }
         }
 
         // Al cambiar de filtro (categoría, material o búsqueda), si el usuario estaba

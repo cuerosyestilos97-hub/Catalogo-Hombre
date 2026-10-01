@@ -162,14 +162,10 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 @keyframes inflate{from{transform:scale(.15)}60%{opacity:1}to{transform:scale(3.4);opacity:0}}
 @keyframes draw{to{stroke-dashoffset:0}}
 
-/* Sello discreto en la esquina de cada foto: logo + código */
-.wm{position:absolute;right:8px;bottom:8px;z-index:2;display:flex;align-items:center;gap:6px;padding:4px 9px 4px 6px;border-radius:99px;background:rgba(255,255,255,.62);pointer-events:none}
-.wm i{display:block;width:24px;height:13px;flex:none;background:var(--logo) center/contain no-repeat}
-.wm b{font:800 .66rem/1 var(--sans);letter-spacing:.06em;color:#2d3516;white-space:nowrap}
-.mimg .wm,.lbw .wm{right:12px;bottom:12px;gap:8px;padding:6px 13px 6px 9px}
-.mimg .wm i,.lbw .wm i{width:38px;height:20px}
-.mimg .wm b,.lbw .wm b{font-size:.82rem}
-.mimg .zh{right:auto;left:12px}
+/* Sello (logo + código) solo en la foto ampliada: translúcido y de buen tamaño */
+.wm{position:absolute;right:5%;bottom:5%;z-index:2;display:flex;flex-direction:column;align-items:flex-end;gap:6px;opacity:.78;pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.55)}
+.wm i{display:block;width:min(36vw,200px);aspect-ratio:352/188;background:var(--logo) center/contain no-repeat;filter:drop-shadow(0 0 7px rgba(255,255,255,.65))}
+.wm b{font-family:var(--display);font-weight:var(--tw);letter-spacing:.04em;font-size:clamp(1.15rem,5.4vw,1.9rem);line-height:1;color:#fff;white-space:nowrap}
 .lbw{position:relative;display:flex;max-width:100%;max-height:100%}
 .lb img{max-height:calc(100dvh - 60px)}
 /* Pie */
@@ -519,7 +515,7 @@ if(m){m.classList.remove('zoom');m.onclick=null;const h=m.querySelector('.zh');i
 function card(p,i){
 const s=imgSrc(p.imagen),bio=p.material==='Bio-Cuero';
 return '<article class="card" style="--acc:'+accOf(p.ci)+';--i:'+(i%8)+'" onclick="openModal(\''+p.codigo+'\')">'+
-'<div class="pimg">'+(s?'<img src="'+s+'" alt="'+p.nombre+'" data-codigo="'+p.codigo+'" loading="lazy" onerror="handleImgError(this)">'+wm(p.codigo):ph(p.codigo))+'<span class="badge">'+(bio?'Bio-Cuero':'Cuero Vacuno')+'</span></div>'+
+'<div class="pimg">'+(s?'<img src="'+s+'" alt="'+p.nombre+'" data-codigo="'+p.codigo+'" loading="lazy" onerror="handleImgError(this)">':ph(p.codigo))+'<span class="badge">'+(bio?'Bio-Cuero':'Cuero Vacuno')+'</span></div>'+
 '<div class="pinfo"><div class="prow"><div><div class="price">'+p.moneda+' '+p.precio.toFixed(2)+'</div><div class="code">COD.'+p.codigo+'</div></div><span class="arrow">'+IC.arr+'</span></div>'+
 '<h3 class="pname">'+p.nombre+'</h3><ul class="pdet"><li>'+IC.col+'<span>'+p.color+'</span></li><li>'+IC.tex+'<span>'+p.textura+'</span></li><li>'+IC.dim+'<span>'+p.dimensiones+'</span></li></ul></div></article>'}
 
@@ -532,12 +528,12 @@ const row=(ic,l,v)=>ic+'<div><small>'+l+'</small><b>'+(v||'-')+'</b></div>';
 $('mdMat').innerHTML=row(IC.mat,'Material',p.material);$('mdTex').innerHTML=row(IC.tex,'Textura',p.textura);
 $('mdCol').innerHTML=row(IC.col,'Color',p.color);$('mdDim').innerHTML=row(IC.dim,'Dimensiones',p.dimensiones);
 const s=imgSrc(p.imagen),m=$('modalImage');
-m.innerHTML=(s?'<img src="'+s+'" alt="'+p.nombre+'" data-codigo="'+p.codigo+'" onerror="handleImgError(this)">'+wm(p.codigo):ph(p.codigo))+'<span class="badge">'+p.material+'</span>'+(s?'<span class="zh"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg></span>':'');
+m.innerHTML=(s?'<img src="'+s+'" alt="'+p.nombre+'" data-codigo="'+p.codigo+'" onerror="handleImgError(this)">':ph(p.codigo))+'<span class="badge">'+p.material+'</span>'+(s?'<span class="zh"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/></svg></span>':'');
 m.classList.toggle('zoom',Boolean(s));m.onclick=s?()=>openLightbox(s,p.nombre,p.codigo):null;
 const mc=document.querySelector('.mc');mc.scrollTop=0;
 $('productModal').classList.add('active');document.body.style.overflow='hidden'}
 function closeModal(){$('productModal').classList.remove('active');document.body.style.overflow='';currentProduct=null}
-function openLightbox(s,a,c){$('lbWm').innerHTML='<i></i><b>'+(c||'')+'</b>';$('lightboxImg').src=s;$('lightboxImg').alt=a||'';$('imageLightbox').classList.add('active')}
+function openLightbox(s,a,c){$('lbWm').innerHTML='<i></i><b>COD.'+(c||'')+'</b>';$('lightboxImg').src=s;$('lightboxImg').alt=a||'';$('imageLightbox').classList.add('active')}
 function closeLightbox(){$('imageLightbox').classList.remove('active')}
 function contactWhatsApp(){if(!currentProduct)return;const p=currentProduct;
 const t='Hola, estoy '+(isH()?'interesado':'interesada')+' en el producto '+p.nombre+' (COD.'+p.codigo+') - Precio: '+p.moneda+' '+p.precio.toFixed(2);

@@ -162,16 +162,14 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;touch-
 @keyframes inflate{from{transform:scale(.15)}60%{opacity:1}to{transform:scale(3.4);opacity:0}}
 @keyframes draw{to{stroke-dashoffset:0}}
 
-/* Marca lateral sobre cada foto: logo + código (queda incluida en cualquier captura) */
-.wm{position:absolute;top:0;right:0;bottom:0;z-index:2;width:30px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;gap:6px;padding:8px 0;background:rgba(255,255,255,.9);border-left:2px solid var(--lime);pointer-events:none}
-.wm i{display:block;position:relative;width:26px;height:46px;flex:none}
-.wm i::before{content:"";position:absolute;left:50%;top:50%;width:46px;height:26px;margin:-13px 0 0 -23px;transform:rotate(90deg);background:var(--logo) center/contain no-repeat}
-.wm b{writing-mode:vertical-rl;transform:rotate(180deg);font:800 .74rem/1 var(--sans);letter-spacing:.1em;color:#2d3516;white-space:nowrap}
-.mimg .wm,.lbw .wm{width:46px;padding:14px 0}
-.mimg .wm i,.lbw .wm i{width:38px;height:68px}
-.mimg .wm i::before,.lbw .wm i::before{width:68px;height:38px;margin:-19px 0 0 -34px}
-.mimg .wm b,.lbw .wm b{font-size:.95rem}
-.mimg .zh{right:58px}
+/* Sello discreto en la esquina de cada foto: logo + código */
+.wm{position:absolute;right:8px;bottom:8px;z-index:2;display:flex;align-items:center;gap:6px;padding:4px 9px 4px 6px;border-radius:99px;background:rgba(255,255,255,.62);pointer-events:none}
+.wm i{display:block;width:24px;height:13px;flex:none;background:var(--logo) center/contain no-repeat}
+.wm b{font:800 .66rem/1 var(--sans);letter-spacing:.06em;color:#2d3516;white-space:nowrap}
+.mimg .wm,.lbw .wm{right:12px;bottom:12px;gap:8px;padding:6px 13px 6px 9px}
+.mimg .wm i,.lbw .wm i{width:38px;height:20px}
+.mimg .wm b,.lbw .wm b{font-size:.82rem}
+.mimg .zh{right:auto;left:12px}
 .lbw{position:relative;display:flex;max-width:100%;max-height:100%}
 .lb img{max-height:calc(100dvh - 60px)}
 /* Pie */
